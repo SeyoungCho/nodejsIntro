@@ -3,6 +3,8 @@ var fs = require('fs');
 var url = require('url');
 var qs = require('querystring');
 var template = require('./lib/template.js');
+var path = require('path');
+var sanitizeHtml = require('sanitize-html');
 
 var app = http.createServer(function(request, response) {
     var _url = request.url;
@@ -43,13 +45,16 @@ var app = http.createServer(function(request, response) {
       }
       else {
         fs.readdir('./data', function(err, filelist){
+          var filteredId = path.parse(queryData.id).base;
           var list = template.list(filelist);
-          fs.readFile(`data/${queryData.id}`, 'utf8', function(err, content){
+          fs.readFile(`data/${filteredId}`, 'utf8', function(err, content){
             var title = queryData.id;
+            var sanitizedTitle = sanitizeHtml(title);
+            var sanitizedContent = sanitizeHtml(content);
             var html = template.HTML(title, list, `
-              <h2>${title}</h2>
+              <h2>${sanitizedTitle}</h2>
               <p style="margin-top:45px;">
-                ${content}
+                ${sanitizedContent}
               </p>
             `, `
               <a href="/update?id=${title}">update</a>
@@ -97,8 +102,9 @@ var app = http.createServer(function(request, response) {
       })
     }else if(pathname === '/update'){
       fs.readdir('./data', function(err, filelist){
+        var filteredId = path.parse(queryData.id).base;
         var list = template.list(filelist);
-        fs.readFile(`data/${queryData.id}`, 'utf8', function(err, content){
+        fs.readFile(`data/${filteredId}`, 'utf8', function(err, content){
           var title = queryData.id;
           var html = template.HTML(title, list, `
             <form action="http://localhost:3000/update_process" method="post">
@@ -141,8 +147,8 @@ var app = http.createServer(function(request, response) {
       request.on('end', function(){
         var post = qs.parse(body);
         var id = post.id;
-        console.log(id);
-        fs.unlink(`data/${id}`, function(err){
+        var filteredId = path.parse(id).base;
+        fs.unlink(`data/${filteredId}`, function(err){
           response.writeHead(302, {Location: "/"});
           response.end();
         });

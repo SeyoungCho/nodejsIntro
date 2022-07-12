@@ -7,7 +7,6 @@ var a = function(){
 
 
 function slowFunc(callback){
-  console.log('slowfunc');
   callback();
 }
 

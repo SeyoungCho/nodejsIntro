@@ -51,15 +51,15 @@ var app = http.createServer(function(request, response) {
             var title = queryData.id;
             var sanitizedTitle = sanitizeHtml(title);
             var sanitizedContent = sanitizeHtml(content);
-            var html = template.HTML(title, list, `
+            var html = template.HTML(sanitizedTitle, list, `
               <h2>${sanitizedTitle}</h2>
               <p style="margin-top:45px;">
                 ${sanitizedContent}
               </p>
             `, `
-              <a href="/update?id=${title}">update</a>
+              <a href="/update?id=${sanitizedTitle}">update</a>
               <form action="delete_process" method="post">
-                <input type="hidden" name="id" value="${title}">
+                <input type="hidden" name="id" value="${sanitizedTitle}">
                 <input type="submit" value="delete">
               </form>
             `)

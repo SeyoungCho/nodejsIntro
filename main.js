@@ -1,12 +1,7 @@
 var http = require('http');
-var fs = require('fs');
 var url = require('url');
-var qs = require('querystring');
-var template = require('./lib/template.js');
-var path = require('path');
-var sanitizeHtml = require('sanitize-html');
-var db = require('./lib/db.js');
-
+var topic = require('./lib/topic');
+var author = require('./lib/author');
 
 var app = http.createServer(function(request, response) {
     var _url = request.url;
@@ -14,165 +9,31 @@ var app = http.createServer(function(request, response) {
     var pathname = url.parse(_url, true).pathname;
     if(pathname === '/'){
       if(queryData.id === undefined){ //home
-        db.query(`SELECT * FROM topic`, function(error, topics, fields){
-          var title = 'Welcome'
-          var description = "Hello, Node.js";
-          var list = template.list(topics);
-          var html = template.HTML(title, list, `
-              <h2>${title}</h2>
-              <p style="margin-top:45px;">
-                ${description}
-              </p>
-            `, 
-            `<a href="/create">create</a>`
-          )
-          response.writeHead(200);
-          response.end(html);
-        });
+        topic.home(request, response);
       }
-      else {
-        db.query(`SELECT * FROM topic`, function(error, topics){
-          if(error){
-            throw error;
-          }
-          db.query(`SELECT * FROM topic LEFT JOIN author ON topic.author_id=author.id WHERE topic.id=?`,[queryData.id], function(error2, topic){
-            if(error2){
-              throw error2;
-            }
-            var title = topic[0].title;
-            var description = topic[0].description;
-            var list = template.list(topics);
-            var html = template.HTML(title, list, `
-              <h2>${title}</h2>
-              <p style="margin-top:45px;">
-                ${description}
-              </p>
-              <p>
-                by ${topic[0].name}
-              </p>
-            `, `
-              <a href="/update?id=${queryData.id}">update</a>
-              <form action="delete_process" method="post">
-                <input type="hidden" name="id" value="${queryData.id}">
-                <input type="submit" value="delete">
-              </form>
-            `)
-            response.writeHead(200);
-            response.end(html);
-          })
-        });
+      else { //상세페이지
+        topic.page(request, response);
       }
     }else if(pathname === '/create'){
-      db.query(`SELECT * FROM topic`, function(error, topics){
-        if(error){
-          throw error;
-        }
-        db.query(`SELECT * FROM author`, function(error2, authors){
-          if(error2){
-            throw error2;
-          }
-          var title = 'Create';
-          var list = template.list(topics);
-          var html = template.HTML(title, list, `
-          <form action="/create_process" method="post">
-            <p><input type="text" name="title" placeholder="Title"></p>
-            <p>
-              <textarea name="description" placeholder="description"></textarea>
-            </p>
-            <p>
-              ${template.authorSelect(authors, null)}
-            </p>
-            <p>
-              <input type="submit">
-            </p>
-          </form>
-          `,``);
-          response.writeHead(200);
-          response.end(html);
-        })
-        
-      });
+      topic.create(request, response);  //글 생성 페이지
     }else if(pathname==='/create_process'){
-      var body = '';
-      request.on('data', function(data){
-        body += data;
-      });
-      request.on('end', function(){
-        var post = qs.parse(body);
-        db.query(`INSERT INTO topic (title, description, created, author_id)
-                VALUES (?, ?, NOW(), ?)`, [post.title, post.description, post.author], 
-          function(error, result){
-            if(error){
-              throw error;
-            }
-            response.writeHead(302, {Location: `/?id=${result.insertId}`});
-            response.end();
-        })
-      })
+      topic.create_process(request, response);   //글 생성 내부 처리함수
     }else if(pathname === '/update'){
-      db.query(`SELECT * FROM topic`, function(error, topics){
-        if(error){
-          throw error;
-        }
-        db.query(`SELECT * FROM topic WHERE id=?`, [queryData.id], function(error2, topic){
-          if(error2){
-            throw error2;
-          }
-          db.query(`SELECT * FROM author`, function(error3, authors){
-            if(error3){
-              throw error3;
-            }
-            var list = template.list(topics);
-            var html = template.HTML(topic[0].title, list, `
-              <form action="/update_process" method="post">
-                <input type="hidden" name="id" value="${topic[0].id}">  
-                <p><input type="text" name="title" value="${topic[0].title}"></p>
-                <p>
-                  <textarea name="description" value=${topic[0].description}></textarea>
-                </p>
-                <p>
-                  ${template.authorSelect(authors, topic[0].author_id)}
-                </p>
-                <p>
-                  <input type="submit">
-                </p>
-              </form>
-            `, ``);
-            response.writeHead(200);
-            response.end(html);
-          });
-        });
-      });
+      topic.update(request, response);  //글 수정 페이지
     }else if(pathname === '/update_process'){
-      var body = '';
-      request.on('data', function(data){
-        body += data;
-      });
-      request.on('end', function(){
-        var post = qs.parse(body);
-        db.query(`UPDATE topic SET title=?, description=?, author_id=? WHERE id=?`, [post.title, post.description, post.author, post.id], function(error, result){
-          if(error){
-            throw error;
-          }
-          response.writeHead(302, {Location: `/?id=${post.id}`});
-          response.end();
-        })
-      })
+      topic.update_process(request, response);  //글 수정 내부 처리함수
     }else if(pathname==="/delete_process"){
-      var body = '';
-      request.on('data', function(data){
-        body += data;
-      });
-      request.on('end', function(){
-        var post = qs.parse(body);
-        db.query(`DELETE FROM topic WHERE id=?`, [post.id], function(error, result){
-          if(error){
-            throw error;
-          }
-          response.writeHead(302, {Location: "/"});
-          response.end();
-        })
-      })
+      topic.delete(request, response);  //글 삭제 내부 처리함수
+    }else if(pathname === "/author"){   
+      author.home(request, response)    //저자 목록 홈
+    }else if(pathname === "/author/create_process"){
+      author.create_process(request, response); //저자 생성 내부 처리함수
+    }else if(pathname === "/author/update"){
+      author.update(request, response); //저자 수정 페이지
+    }else if(pathname === "/author/update_process"){
+      author.update_process(request, response);   //저자 수정 내부 처리함수
+    }else if(pathname === "/author/delete_process"){
+      author.delete_process(request, response); //저자 삭제 내부 처리함수
     }else{
       response.writeHead(404);
       response.end('Not Found');

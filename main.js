@@ -2,6 +2,7 @@ var http = require('http');
 var url = require('url');
 var topic = require('./lib/topic');
 var author = require('./lib/author');
+var search = require('./lib/search');
 
 var app = http.createServer(function(request, response) {
     var _url = request.url;
@@ -34,6 +35,8 @@ var app = http.createServer(function(request, response) {
       author.update_process(request, response);   //저자 수정 내부 처리함수
     }else if(pathname === "/author/delete_process"){
       author.delete_process(request, response); //저자 삭제 내부 처리함수
+    }else if(pathname === "/search_result"){
+      search.search_result(request, response);
     }else{
       response.writeHead(404);
       response.end('Not Found');
